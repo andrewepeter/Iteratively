@@ -1,0 +1,9 @@
+{
+  "name": "validateWord",
+  "version": "1.0.0",
+  "description": "Lambda function for word validation",
+  "main": "index.js",
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  }
+}
