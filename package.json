@@ -41,5 +41,10 @@
     "tsx": "^4.7.2",
     "typescript": "^5.7.2",
     "vite": "^5.4.10"
-  }
+  },
+  "description": "This repository provides a starter template for creating applications using React+Vite and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
