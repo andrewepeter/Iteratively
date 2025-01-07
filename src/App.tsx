@@ -4,12 +4,14 @@ import { Howl } from 'howler';
 
 function App() {
   const [word, setWord] = useState('');
+  const [curWord, setCurWord] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const [userInput, setUserInput] = useState('');
   const [isStarted, setIsStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(120);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wordList, setWordList] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const TIMEOUT_DURATION = 10000;
   const PROMPT_TEMPLATE = "Please generate exactly one simple, valid English word (between 4 and 8 characters long). Do not include any spaces or punctuation. AND ONLY THE WORD NO SENTENCES OR PHRASES.";
@@ -79,6 +81,7 @@ function App() {
 
 
         setWord(cleanWord);
+        setCurWord(cleanWord);
         setUserInput('');
         setError(null);
       } catch (error) {
@@ -139,6 +142,7 @@ function App() {
     setTimeLeft(60);
     setError(null);
     setScore(0);
+    setWordList([])
     inputRef.current?.focus();
     generateWord();
     // Focus the input field after starting
@@ -151,16 +155,24 @@ function App() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      if (userInput.startsWith(word[word.length - 1])) {
-        setScore((prev) => prev + 1);
-
-        if (score === 20 || score === 15 || score === 10 || score === 5) {
-          sounds.perfect.play();
+      console.log(userInput);
+      console.log(curWord);
+      if (userInput.startsWith(curWord[curWord.length - 1])) {
+        if (wordList.includes(userInput)) {
+          setError("Word already used. Try a different word!");
         } else {
-          sounds.ding.play();
-        }
+          setScore((prev) => prev + 1);
 
-        generateWord(); // Generate a new word on correct input
+          if (score === 20 || score === 15 || score === 10 || score === 5) {
+            sounds.perfect.play();
+          } else {
+            sounds.ding.play();
+          }
+
+          setCurWord(userInput);
+          setWordList((prevList) => [...prevList, userInput]);
+          setError(null);
+        }
       } else {
         setError("Incorrect word. Try again!");
       }
@@ -188,7 +200,7 @@ function App() {
             Time Left: {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
           </div>
           <div className="score">Score: {score}</div>
-          <div className="word-display">{isLoading ? 'Generating word...' : word}</div>
+          <div className="word-display">{isLoading ? 'Generating word...' : curWord}</div>
           {error && <div className="error">{error}</div>}
           <input
             ref={inputRef}
@@ -218,6 +230,14 @@ function App() {
           <button onClick={generateWord} disabled={isLoading} className="generate-button">
             Skip Word
           </button>
+          <div className="word-list">
+            <h3>Word List:</h3>
+            <ul>
+              {wordList.map((w, index) => (
+                <li key={`${w}-${index}`}>{w}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </main>
