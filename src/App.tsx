@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { Howl } from 'howler';
 
 function App() {
   const [word, setWord] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const [userInput, setUserInput] = useState('');
   const [isStarted, setIsStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(120);
@@ -12,6 +14,18 @@ function App() {
   const TIMEOUT_DURATION = 10000;
   const PROMPT_TEMPLATE = "Please generate exactly one simple, valid English word (between 4 and 8 characters long). Do not include any spaces or punctuation. AND ONLY THE WORD NO SENTENCES OR PHRASES.";
 
+  const sounds = {
+
+    perfect: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
+      volume: 0.9,
+    }),
+
+    ding: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/ding.mp3'],
+      volume: 0.9,
+    }),
+  };
 
   const bedrockClient = useMemo(() => new BedrockRuntimeClient({
     region: import.meta.env.VITE_AWS_REGION || "ca-central-1",
@@ -91,31 +105,67 @@ function App() {
   }, [isStarted, timeLeft]);
 
   useEffect(() => {
+    const focusInput = () => {
+      if (isStarted && !isLoading) {
+        inputRef.current?.focus();
+      }
+    };
+
+    // Focus after a very short delay to ensure DOM is ready
+    const timeoutId = setTimeout(focusInput, 10);
+
+    // Add event listener to refocus on window focus
+    window.addEventListener('focus', focusInput);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('focus', focusInput);
+    };
+  }, [isStarted, isLoading]);
+
+  useEffect(() => {
     if (timeLeft === 0) {
       setIsStarted(false);
       setWord('');
       setUserInput('');
+      if (isStarted && !isLoading) {
+        inputRef.current?.focus();
+      }
     }
-  }, [timeLeft]);
+  }, [timeLeft, word, isStarted, isLoading]);
 
   const handleStart = () => {
     setIsStarted(true);
-    setTimeLeft(120);
+    setTimeLeft(60);
     setError(null);
     setScore(0);
-    generateWord(); // Call the function on start
+    inputRef.current?.focus();
+    generateWord();
+    // Focus the input field after starting
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInput = e.target.value.toLowerCase();
     setUserInput(newInput);
-
-    if (newInput === word) {
-      setScore((prev) => prev + 1);
-      generateWord(); // Call the function when the user inputs the correct word
-    }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (userInput.startsWith(word[word.length - 1])) {
+        setScore((prev) => prev + 1);
+
+        if (score === 20 || score === 15 || score === 10 || score === 5) {
+          sounds.perfect.play();
+        } else {
+          sounds.ding.play();
+        }
+
+        generateWord(); // Generate a new word on correct input
+      } else {
+        setError("Incorrect word. Try again!");
+      }
+    }
+  }
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
@@ -123,8 +173,12 @@ function App() {
     <main className="container">
       {!isStarted ? (
         <div className="start-screen">
+          <text>combo</text>
           <button onClick={handleStart} className="start-button">
             Start Game
+          </button>
+          <button className="leader-button">
+            View Leaderboard
           </button>
           {score > 0 && <div className="final-score">Final Score: {score}</div>}
         </div>
@@ -137,13 +191,30 @@ function App() {
           <div className="word-display">{isLoading ? 'Generating word...' : word}</div>
           {error && <div className="error">{error}</div>}
           <input
+            ref={inputRef}
             type="text"
             value={userInput}
             onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             placeholder="Type the word"
             className="word-input"
-            disabled={isLoading}
+            disabled={!isStarted || isLoading}
+            autoFocus
+            onBlur={(e) => {
+              // Prevent losing focus if game is active
+              if (isStarted && !isLoading) {
+                e.target.focus();
+              }
+            }}
+
+            onCopy={(e) => e.preventDefault()}
+            onPaste={(e) => e.preventDefault()}
+            onCut={(e) => e.preventDefault()}
           />
+
+          <button onClick={generateWord} disabled={isLoading} className="generate-button">
+            Skip Word
+          </button>
           <button onClick={generateWord} disabled={isLoading} className="generate-button">
             Skip Word
           </button>

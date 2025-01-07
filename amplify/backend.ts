@@ -5,5 +5,6 @@ import { data } from './data/resource';
 
 defineBackend({
   auth,
+  //api,
   data,
 });
