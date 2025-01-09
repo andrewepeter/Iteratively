@@ -13,18 +13,45 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [wordList, setWordList] = useState<string[]>([]);
   const [score, setScore] = useState(0);
+  const [chainLength, setChainLength] = useState(0);
+  const [comboCount, setComboCount] = useState(0);
+  const [comboLevel, setComboLevel] = useState(0);
+  const [lastWordTime, setLastWordTime] = useState<number | null>(null);
+  const [comboMessage, setComboMessage] = useState<string | null>(null);
   const TIMEOUT_DURATION = 10000;
   const PROMPT_TEMPLATE = "Please generate exactly one simple, valid English word (between 4 and 8 characters long). Do not include any spaces or punctuation. AND ONLY THE WORD NO SENTENCES OR PHRASES.";
 
   const sounds = {
-
     perfect: new Howl({
       src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
       volume: 0.9,
     }),
-
     ding: new Howl({
       src: ['https://wordsoundeffects.s3.amazonaws.com/ding.mp3'],
+      volume: 0.9,
+    }),
+    go: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/go.mp3'],
+      volume: 0.9,
+    }),
+    invalidword: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/invalidword.mp3'],
+      volume: 0.9,
+    }),
+    nice: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/nice.mp3'],
+      volume: 0.9,
+    }),
+    wordused: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/wordused.mp3'],
+      volume: 0.9,
+    }),
+    wow: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/wow.mp3'],
+      volume: 0.9,
+    }),
+    doublepoints: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/doublepoints.mp3'],
       volume: 0.9,
     }),
   };
@@ -48,7 +75,6 @@ function App() {
         top_p: 1,
       };
 
-      // Create the command here inside the callback
       const command = new InvokeModelCommand({
         modelId: "mistral.mistral-large-2402-v1:0",
         body: JSON.stringify(payload),
@@ -77,8 +103,7 @@ function App() {
         }
 
         const rawWord = responseData.outputs[0].text.trim().toLowerCase();
-        const cleanWord = rawWord.replace(/[^a-z]/g, '');
-
+        const cleanWord = rawWord.split(' ')[0].replace(/[^a-z]/g, ''); // Extract only the first word
 
         setWord(cleanWord);
         setCurWord(cleanWord);
@@ -114,10 +139,8 @@ function App() {
       }
     };
 
-    // Focus after a very short delay to ensure DOM is ready
     const timeoutId = setTimeout(focusInput, 10);
 
-    // Add event listener to refocus on window focus
     window.addEventListener('focus', focusInput);
 
     return () => {
@@ -134,6 +157,7 @@ function App() {
       if (isStarted && !isLoading) {
         inputRef.current?.focus();
       }
+      resetCombo();
     }
   }, [timeLeft, word, isStarted, isLoading]);
 
@@ -142,10 +166,15 @@ function App() {
     setTimeLeft(60);
     setError(null);
     setScore(0);
-    setWordList([])
+    setChainLength(0);
+    setComboCount(0);
+    setComboLevel(0);
+    setLastWordTime(null);
+    setComboMessage(null); // Clear combo message
+    setWordList([]); // Clear the word list when starting a new game
     inputRef.current?.focus();
     generateWord();
-    // Focus the input field after starting
+    sounds.go.play();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,25 +188,80 @@ function App() {
       console.log(curWord);
       if (userInput.startsWith(curWord[curWord.length - 1])) {
         if (wordList.includes(userInput)) {
+          sounds.wordused.play();
+          setScore((prev) => prev - 15);
           setError("Word already used. Try a different word!");
+          resetCombo();
         } else {
-          setScore((prev) => prev + 1);
+          const currentTime = Date.now();
+          const timeDiff = lastWordTime ? (currentTime - lastWordTime) / 1000 : 0;
 
-          if (score === 20 || score === 15 || score === 10 || score === 5) {
-            sounds.perfect.play();
-          } else {
-            sounds.ding.play();
+          if (comboLevel === 0 && comboCount >= 2 && timeDiff <= 10) {
+            setComboLevel(1);
+            setComboCount(0);
+            setComboMessage("Combo 1 (2x Points) Activated!");
+            sounds.doublepoints.play();
+          } else if (comboLevel === 1 && comboCount >= 4 && timeDiff <= 15) {
+            setComboLevel(2);
+            setComboCount(0);
+            setComboMessage("Combo 2 (3x Points) Activated!");
+          } else if (comboLevel === 2 && comboCount >= 9 && timeDiff <= 20) {
+            setComboLevel(3);
+            setComboCount(0);
+            setComboMessage("Combo 3 (5x Points) Activated!");
+          } else if (timeDiff > 20) {
+            resetCombo();
+          }
+
+          const comboMultiplier = comboLevel === 1 ? 2 : comboLevel === 2 ? 3 : comboLevel === 3 ? 5 : 1;
+          const points = (10 + userInput.length) * comboMultiplier;
+
+          setChainLength((prev) => prev + 1);
+          setScore((prev) => prev + points);
+          setComboCount((prev) => prev + 1);
+          setLastWordTime(currentTime);
+
+          if (userInput.length > 6) {
+            setScore((prev) => prev + 10);
+          }
+
+          if (/[xyzj]/.test(userInput)) {
+            setScore((prev) => prev + 5);
+          }
+
+          if (chainLength % 5 === 0) {
+            setScore((prev) => prev + 20);
+            sounds.wow.play();
+          } else if (chainLength % 10 === 0) {
+            setScore((prev) => prev + 50);
+            sounds.wow.play();
+          } else if (chainLength % 20 === 0) {
+            setScore((prev) => prev + 100);
+            sounds.wow.play();
           }
 
           setCurWord(userInput);
           setWordList((prevList) => [...prevList, userInput]);
           setError(null);
+          setUserInput(''); // Clear the text field
         }
       } else {
+        sounds.invalidword.play();
         setError("Incorrect word. Try again!");
+        setScore((prev) => prev - 5);
+        resetCombo();
+        setUserInput(''); // Clear the text field
       }
     }
-  }
+  };
+
+  const resetCombo = () => {
+    setComboCount(0);
+    setComboLevel(0);
+    setLastWordTime(null);
+    setComboMessage(null); // Clear combo message
+  };
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
@@ -202,6 +286,7 @@ function App() {
           <div className="score">Score: {score}</div>
           <div className="word-display">{isLoading ? 'Generating word...' : curWord}</div>
           {error && <div className="error">{error}</div>}
+          {comboMessage && <div className="combo-message">{comboMessage}</div>} {/* Display combo message */}
           <input
             ref={inputRef}
             type="text"
@@ -218,15 +303,10 @@ function App() {
                 e.target.focus();
               }
             }}
-
             onCopy={(e) => e.preventDefault()}
             onPaste={(e) => e.preventDefault()}
             onCut={(e) => e.preventDefault()}
           />
-
-          <button onClick={generateWord} disabled={isLoading} className="generate-button">
-            Skip Word
-          </button>
           <button onClick={generateWord} disabled={isLoading} className="generate-button">
             Skip Word
           </button>
