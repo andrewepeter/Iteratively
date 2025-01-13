@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { Howl } from 'howler';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import HowToPlay from './HowToPlay';
@@ -20,7 +21,19 @@ function App() {
   const [comboLevel, setComboLevel] = useState(0);
   const [lastWordTime, setLastWordTime] = useState<number | null>(null);
   const [comboMessage, setComboMessage] = useState<string | null>(null);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState<string | null>(null);
+  const [awsAccessKeyId, setAwsAccessKeyId] = useState<string | null>(null);
+  const awsRegion = "ca-central-1";
+  const [leaderboardTable, setLeaderboardTable] = useState<string | null>(null);
+
+  interface LeaderboardEntry {
+    id: string;
+    username: string;
+    score: number;
+  }
+
+
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const TIMEOUT_DURATION = 10000;
 
@@ -28,7 +41,7 @@ function App() {
   const LBApiUrl = 'https://uceb7mx731.execute-api.ca-central-1.amazonaws.com/prod/LB';
   const PROMPT_TEMPLATE = "Please generate exactly one simple, valid English word (between 4 and 8 characters long). Do not include any spaces or punctuation. AND ONLY THE WORD NO SENTENCES OR PHRASES.";
 
-  const sounds = {
+  /*const sounds = {
     perfect: new Howl({
       src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
       volume: 0.9,
@@ -61,17 +74,71 @@ function App() {
       src: ['https://wordsoundeffects.s3.amazonaws.com/doublepoints.mp3'],
       volume: 0.9,
     }),
-  };
+  };*/
 
-  const bedrockClient = useMemo(() => new BedrockRuntimeClient({
-    region: import.meta.env.VITE_AWS_REGION || "ca-central-1",
-    credentials: {
-      accessKeyId: import.meta.env.VITE_REACT_APP_AWS_ACCESS_KEY_ID!,
-      secretAccessKey: import.meta.env.VITE_REACT_APP_AWS_SECRET_ACCESS_KEY!
+
+
+
+  useEffect(() => {
+    const secret_name = "prod/amplifySecrets";
+    const getSecretValue = async () => {
+      try {
+        // Send the request to fetch the secret
+        const client = new SecretsManagerClient({
+          region: "ca-central-1",
+          /*credentials: {
+            accessKeyId: import.meta.env.VITE_REACT_APP_AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: import.meta.env.VITE_REACT_APP_AWS_SECRET_ACCESS_KEY || ''
+          }*/
+        });
+        const data = await client.send(new GetSecretValueCommand({ SecretId: secret_name }));
+        if (data.SecretString) {
+          const secret = JSON.parse(data.SecretString);
+          console.log("Secret values:", secret);
+
+          // Now you can access your secrets
+          setAwsSecretAccessKey(secret.VITE_REACT_APP_AWS_SECRET_ACCESS_KEY);
+          setAwsAccessKeyId(secret.VITE_REACT_APP_AWS_ACCESS_KEY_ID);
+          //setAwsRegion(secret.awsRegion);
+          //setLeaderboardTable(secret.leaderboardTable);
+
+          // Log the secret values
+          console.log("AWS Access Key ID:", awsAccessKeyId);
+          console.log("AWS Secret Access Key:", awsSecretAccessKey);
+          //console.log("AWS Region:", awsRegion);
+          //console.log("Leaderboard Table:", leaderboardTable);
+        } else {
+          console.error("SecretString is not available");
+        }
+      } catch (error) {
+        console.error("Error fetching secret:", error);
+      }
+    };
+    getSecretValue();
+  }, [awsAccessKeyId, awsSecretAccessKey]);
+
+  const bedrockClient = useMemo(() => {
+    if (awsAccessKeyId && awsSecretAccessKey && awsRegion) {
+      console.log("Initializing BedrockRuntimeClient...");
+      return new BedrockRuntimeClient({
+        region: awsRegion,
+        credentials: {
+          accessKeyId: awsAccessKeyId,
+          secretAccessKey: awsSecretAccessKey
+        }
+      });
     }
-  }), []);
+    console.log("BedrockRuntimeClient not initialized");
+    return null;
+  }, [awsAccessKeyId, awsRegion, awsSecretAccessKey]);
+
 
   const generateWord = useCallback(async () => {
+    if (!bedrockClient) {
+      setError("Bedrock client is not initialized");
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -178,7 +245,7 @@ function App() {
     setWordList([]); // Clear the word list when starting a new game
     inputRef.current?.focus();
     generateWord();
-    sounds.go.play();
+    //sounds.go.play();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,7 +316,7 @@ function App() {
             console.log(data);
             if (userInput.startsWith(curWord[curWord.length - 1])) {
               if (wordList.includes(userInput)) {
-                sounds.wordused.play();
+                //sounds.wordused.play();
                 setScore((prev) => prev - 15);
                 setError("Word already used. Try a different word!");
                 resetCombo();
@@ -261,7 +328,7 @@ function App() {
                   setComboLevel(1);
                   setComboCount(0);
                   setComboMessage("Combo 1 (2x Points) Activated!");
-                  sounds.doublepoints.play();
+                  //sounds.doublepoints.play();
                 } else if (comboLevel === 1 && comboCount >= 4 && timeDiff <= 15) {
                   setComboLevel(2);
                   setComboCount(0);
@@ -292,13 +359,13 @@ function App() {
 
                 if (chainLength % 5 === 0) {
                   setScore((prev) => prev + 20);
-                  sounds.wow.play();
+                  //sounds.wow.play();
                 } else if (chainLength % 10 === 0) {
                   setScore((prev) => prev + 50);
-                  sounds.wow.play();
+                  //sounds.wow.play();
                 } else if (chainLength % 20 === 0) {
                   setScore((prev) => prev + 100);
-                  sounds.wow.play();
+                  //sounds.wow.play();
                 }
 
                 setCurWord(userInput);
@@ -307,7 +374,7 @@ function App() {
                 setUserInput(''); // Clear the text field
               }
             } else {
-              sounds.invalidword.play();
+              //sounds.invalidword.play();
               setError("Incorrect word. Try again!");
               setScore((prev) => prev - 5);
               resetCombo();
@@ -401,8 +468,8 @@ function App() {
           <div className="word-list mt-8">
             <h3 className="text-xl font-bold mb-2">Word List:</h3>
             <ul className="list-disc list-inside">
-              {wordList.map((w, index) => (
-                <li key={index} className="text-lg">{w}</li>
+              {wordList.map((w) => (
+                <li key={w} className="text-lg">{w}</li>
               ))}
             </ul>
           </div>
