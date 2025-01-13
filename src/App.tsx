@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Howl } from 'howler';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import HowToPlay from './HowToPlay';
-import { fetchAuthSession } from 'aws-amplify/auth'
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 function App() {
   const [word, setWord] = useState('');
@@ -20,8 +20,12 @@ function App() {
   const [comboLevel, setComboLevel] = useState(0);
   const [lastWordTime, setLastWordTime] = useState<number | null>(null);
   const [comboMessage, setComboMessage] = useState<string | null>(null);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const TIMEOUT_DURATION = 10000;
-  const apiUrl = 'https://7jnx9golvc.execute-api.ca-central-1.amazonaws.com/prod/validWord';
+
+  const wordApiUrl = 'https://7jnx9golvc.execute-api.ca-central-1.amazonaws.com/prod/word';
+  const LBApiUrl = 'https://uceb7mx731.execute-api.ca-central-1.amazonaws.com/prod/LB';
   const PROMPT_TEMPLATE = "Please generate exactly one simple, valid English word (between 4 and 8 characters long). Do not include any spaces or punctuation. AND ONLY THE WORD NO SENTENCES OR PHRASES.";
 
   const sounds = {
@@ -182,6 +186,42 @@ function App() {
     setUserInput(newInput);
   };
 
+  const handleLeaderBoard = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      console.log(token)
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': String(token), // Include the token in the Authorization header
+      };
+
+      const response = await fetch(LBApiUrl, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      if (response.ok) {
+        const responseText = await response.text();
+        console.log(responseText); // Log the response text for debugging
+        if (responseText) {
+          const data = JSON.parse(responseText);
+          setLeaderboard(data);
+          setShowLeaderboard(true);
+        } else {
+          setError("Empty response from server");
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Error response text:', errorText); // Log the error response text
+        setError("Failed to fetch leaderboard");
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      setError('Failed to fetch leaderboard');
+    }
+  };
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       console.log(userInput);
@@ -189,92 +229,101 @@ function App() {
       try {
         const session = await fetchAuthSession();
         const token = session.tokens?.idToken?.toString();
-        console.log(token); // Ensure the token is printed correctly
 
         const headers: HeadersInit = {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '', // Include the token in the Authorization header
+          'Authorization': String(token), // Include the token in the Authorization header
         };
 
-        const response = await fetch(apiUrl, {
+        const response = await fetch(wordApiUrl, {
           method: 'POST',
-          credentials: 'include',
           headers: headers,
           body: JSON.stringify({ word: userInput.toLowerCase() }),
         });
+
         if (response.ok) {
-          if (userInput.startsWith(curWord[curWord.length - 1])) {
-            if (wordList.includes(userInput)) {
-              sounds.wordused.play();
-              setScore((prev) => prev - 15);
-              setError("Word already used. Try a different word!");
-              resetCombo();
-            } else {
-              const currentTime = Date.now();
-              const timeDiff = lastWordTime ? (currentTime - lastWordTime) / 1000 : 0;
-
-              if (comboLevel === 0 && comboCount >= 2 && timeDiff <= 10) {
-                setComboLevel(1);
-                setComboCount(0);
-                setComboMessage("Combo 1 (2x Points) Activated!");
-                sounds.doublepoints.play();
-              } else if (comboLevel === 1 && comboCount >= 4 && timeDiff <= 15) {
-                setComboLevel(2);
-                setComboCount(0);
-                setComboMessage("Combo 2 (3x Points) Activated!");
-              } else if (comboLevel === 2 && comboCount >= 9 && timeDiff <= 20) {
-                setComboLevel(3);
-                setComboCount(0);
-                setComboMessage("Combo 3 (5x Points) Activated!");
-              } else if (timeDiff > 20) {
+          const responseText = await response.text();
+          console.log(responseText); // Log the response text for debugging
+          if (responseText) {
+            const data = JSON.parse(responseText);
+            console.log(data);
+            if (userInput.startsWith(curWord[curWord.length - 1])) {
+              if (wordList.includes(userInput)) {
+                sounds.wordused.play();
+                setScore((prev) => prev - 15);
+                setError("Word already used. Try a different word!");
                 resetCombo();
+              } else {
+                const currentTime = Date.now();
+                const timeDiff = lastWordTime ? (currentTime - lastWordTime) / 1000 : 0;
+
+                if (comboLevel === 0 && comboCount >= 2 && timeDiff <= 10) {
+                  setComboLevel(1);
+                  setComboCount(0);
+                  setComboMessage("Combo 1 (2x Points) Activated!");
+                  sounds.doublepoints.play();
+                } else if (comboLevel === 1 && comboCount >= 4 && timeDiff <= 15) {
+                  setComboLevel(2);
+                  setComboCount(0);
+                  setComboMessage("Combo 2 (3x Points) Activated!");
+                } else if (comboLevel === 2 && comboCount >= 9 && timeDiff <= 20) {
+                  setComboLevel(3);
+                  setComboCount(0);
+                  setComboMessage("Combo 3 (5x Points) Activated!");
+                } else if (timeDiff > 20) {
+                  resetCombo();
+                }
+
+                const comboMultiplier = comboLevel === 1 ? 2 : comboLevel === 2 ? 3 : comboLevel === 3 ? 5 : 1;
+                const points = (10 + userInput.length) * comboMultiplier;
+
+                setChainLength((prev) => prev + 1);
+                setScore((prev) => prev + points);
+                setComboCount((prev) => prev + 1);
+                setLastWordTime(currentTime);
+
+                if (userInput.length > 6) {
+                  setScore((prev) => prev + 10);
+                }
+
+                if (/[xyzj]/.test(userInput)) {
+                  setScore((prev) => prev + 5);
+                }
+
+                if (chainLength % 5 === 0) {
+                  setScore((prev) => prev + 20);
+                  sounds.wow.play();
+                } else if (chainLength % 10 === 0) {
+                  setScore((prev) => prev + 50);
+                  sounds.wow.play();
+                } else if (chainLength % 20 === 0) {
+                  setScore((prev) => prev + 100);
+                  sounds.wow.play();
+                }
+
+                setCurWord(userInput);
+                setWordList((prevList) => [...prevList, userInput]);
+                setError(null);
+                setUserInput(''); // Clear the text field
               }
-
-              const comboMultiplier = comboLevel === 1 ? 2 : comboLevel === 2 ? 3 : comboLevel === 3 ? 5 : 1;
-              const points = (10 + userInput.length) * comboMultiplier;
-
-              setChainLength((prev) => prev + 1);
-              setScore((prev) => prev + points);
-              setComboCount((prev) => prev + 1);
-              setLastWordTime(currentTime);
-
-              if (userInput.length > 6) {
-                setScore((prev) => prev + 10);
-              }
-
-              if (/[xyzj]/.test(userInput)) {
-                setScore((prev) => prev + 5);
-              }
-
-              if (chainLength % 5 === 0) {
-                setScore((prev) => prev + 20);
-                sounds.wow.play();
-              } else if (chainLength % 10 === 0) {
-                setScore((prev) => prev + 50);
-                sounds.wow.play();
-              } else if (chainLength % 20 === 0) {
-                setScore((prev) => prev + 100);
-                sounds.wow.play();
-              }
-
-              setCurWord(userInput);
-              setWordList((prevList) => [...prevList, userInput]);
-              setError(null);
+            } else {
+              sounds.invalidword.play();
+              setError("Incorrect word. Try again!");
+              setScore((prev) => prev - 5);
+              resetCombo();
               setUserInput(''); // Clear the text field
             }
           } else {
-            sounds.invalidword.play();
-            setError("Incorrect word. Try again!");
-            setScore((prev) => prev - 5);
-            resetCombo();
-            setUserInput(''); // Clear the text field
+            setError("Empty response from server");
           }
         } else {
-          const errorData = await response.json();
-          setError(errorData.error);
+          const errorText = await response.text();
+          console.error('Error response text:', errorText); // Log the error response text
+          setError("Failed to verify word");
         }
       } catch (error) {
         console.error('Error verifying word:', error);
+        setError('Failed to verify word');
       }
     }
   };
@@ -296,11 +345,21 @@ function App() {
           <button onClick={handleStart} className="start-button bg-blue-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">
             Start Game
           </button>
-          <button className="leader-button bg-gray-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 mt-4">
+          <button onClick={handleLeaderBoard} className="leader-button bg-gray-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 mt-4">
             View Leaderboard
           </button>
           {score > 0 && <div className="final-score text-xl font-bold mt-4">Final Score: {score}</div>}
           <HowToPlay />
+          {showLeaderboard && (
+            <div className="leaderboard mt-8">
+              <h3 className="text-xl font-bold mb-2">Leaderboard:</h3>
+              <ul className="list-disc list-inside">
+                {leaderboard.map((entry) => (
+                  <li key={entry.id} className="text-lg">{entry.username}: {entry.score}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       ) : (
         <div className="max-w-5xl mx-auto p-8 bg-white rounded-lg shadow-lg mt-20">
