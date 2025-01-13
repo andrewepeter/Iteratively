@@ -1,7 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-//import { Howl } from 'howler';
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
+import React, { useState, useEffect, useRef } from 'react';
 import HowToPlay from './HowToPlay';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
@@ -21,9 +18,7 @@ function App() {
   const [comboLevel, setComboLevel] = useState(0);
   const [lastWordTime, setLastWordTime] = useState<number | null>(null);
   const [comboMessage, setComboMessage] = useState<string | null>(null);
-  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState<string | null>(null);
-  const [awsAccessKeyId, setAwsAccessKeyId] = useState<string | null>(null);
-  const awsRegion = "ca-central-1";
+  //const awsRegion = "ca-central-1";
   //const [leaderboardTable, setLeaderboardTable] = useState<string | null>(null);
 
   interface LeaderboardEntry {
@@ -32,14 +27,13 @@ function App() {
     score: number;
   }
 
-
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const TIMEOUT_DURATION = 10000;
 
   const wordApiUrl = 'https://7jnx9golvc.execute-api.ca-central-1.amazonaws.com/prod/word';
   const LBApiUrl = 'https://uceb7mx731.execute-api.ca-central-1.amazonaws.com/prod/LB';
-  const PROMPT_TEMPLATE = "Please generate exactly one simple, valid English word (between 4 and 8 characters long). Do not include any spaces or punctuation. AND ONLY THE WORD NO SENTENCES OR PHRASES.";
+  const genWordUrl = 'https://dns37gpcu9.execute-api.ca-central-1.amazonaws.com/prod/genWord'
+
 
   /*const sounds = {
     perfect: new Howl({
@@ -77,124 +71,38 @@ function App() {
   };*/
 
 
-
-
-  useEffect(() => {
-    const secret_name = "prod/amplifySecrets";
-    const getSecretValue = async () => {
-      try {
-        // Send the request to fetch the secret
-        const client = new SecretsManagerClient({
-          region: "ca-central-1",
-          credentials: {
-            accessKeyId: import.meta.env.VITE_REACT_APP_AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: import.meta.env.VITE_REACT_APP_AWS_SECRET_ACCESS_KEY || ''
-          }
-        });
-        const data = await client.send(new GetSecretValueCommand({ SecretId: secret_name }));
-        if (data.SecretString) {
-          const secret = JSON.parse(data.SecretString);
-          console.log("Secret values:", secret);
-
-          // Now you can access your secrets
-          setAwsSecretAccessKey(secret.VITE_REACT_APP_AWS_SECRET_ACCESS_KEY);
-          setAwsAccessKeyId(secret.VITE_REACT_APP_AWS_ACCESS_KEY_ID);
-          //setAwsRegion(secret.awsRegion);
-          //setLeaderboardTable(secret.leaderboardTable);
-
-          // Log the secret values
-          console.log("AWS Access Key ID:", awsAccessKeyId);
-          console.log("AWS Secret Access Key:", awsSecretAccessKey);
-          //console.log("AWS Region:", awsRegion);
-          //console.log("Leaderboard Table:", leaderboardTable);
-        } else {
-          console.error("SecretString is not available");
-        }
-      } catch (error) {
-        console.error("Error fetching secret:", error);
-      }
-    };
-    getSecretValue();
-  }, [awsAccessKeyId, awsSecretAccessKey]);
-
-  const bedrockClient = useMemo(() => {
-    if (awsAccessKeyId && awsSecretAccessKey && awsRegion) {
-      console.log("Initializing BedrockRuntimeClient...");
-      return new BedrockRuntimeClient({
-        region: awsRegion,
-        credentials: {
-          accessKeyId: awsAccessKeyId,
-          secretAccessKey: awsSecretAccessKey
-        }
-      });
-    }
-    console.log("BedrockRuntimeClient not initialized");
-    return null;
-  }, [awsAccessKeyId, awsRegion, awsSecretAccessKey]);
-
-
-  const generateWord = useCallback(async () => {
-    if (!bedrockClient) {
-      setError("Bedrock client is not initialized");
-      return;
-    }
-
+  const generateWord = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
 
-      const payload = {
-        prompt: PROMPT_TEMPLATE,
-        max_tokens: 10,
-        temperature: 0.9,
-        top_p: 1,
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': String(token), // Include the token in the Authorization header
       };
-
-      const command = new InvokeModelCommand({
-        modelId: "mistral.mistral-large-2402-v1:0",
-        body: JSON.stringify(payload),
-        contentType: "application/json",
-        accept: "application/json",
+      const response = await fetch(genWordUrl, {
+        method: 'GET',
+        headers: headers,
       });
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
-
-      try {
-        const response = await bedrockClient.send(command, {
-          abortSignal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.body) {
-          throw new Error('Empty response from Bedrock');
-        }
-
-        const responseData = JSON.parse(new TextDecoder().decode(response.body));
-
-        if (!responseData?.outputs?.[0]?.text) {
-          throw new Error('Invalid response format');
-        }
-
-        const rawWord = responseData.outputs[0].text.trim().toLowerCase();
-        const cleanWord = rawWord.split(' ')[0].replace(/[^a-z]/g, ''); // Extract only the first word
-
-        setWord(cleanWord);
-        setCurWord(cleanWord);
+      const data = await response.json();
+      if (response.ok) {
+        const parsedBody = JSON.parse(data.body);
+        setWord(parsedBody.word);
+        setCurWord(parsedBody.word);
         setUserInput('');
         setError(null);
-      } catch (error) {
-        clearTimeout(timeoutId);
-        throw error;
+      } else {
+        throw new Error(data.error);
       }
     } catch (error) {
-      console.error('Error generating word:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate word';
-      setError(errorMessage);
+      console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate word');
     } finally {
       setIsLoading(false);
     }
-  }, [bedrockClient]);
+  };
 
   useEffect(() => {
     if (!isStarted || timeLeft <= 0) return;
