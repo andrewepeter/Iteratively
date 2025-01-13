@@ -86,10 +86,10 @@ function App() {
         // Send the request to fetch the secret
         const client = new SecretsManagerClient({
           region: "ca-central-1",
-          /*credentials: {
+          credentials: {
             accessKeyId: import.meta.env.VITE_REACT_APP_AWS_ACCESS_KEY_ID || '',
             secretAccessKey: import.meta.env.VITE_REACT_APP_AWS_SECRET_ACCESS_KEY || ''
-          }*/
+          }
         });
         const data = await client.send(new GetSecretValueCommand({ SecretId: secret_name }));
         if (data.SecretString) {
