@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-import { Howl } from 'howler';
+//import { Howl } from 'howler';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import HowToPlay from './HowToPlay';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -24,7 +24,7 @@ function App() {
   const [awsSecretAccessKey, setAwsSecretAccessKey] = useState<string | null>(null);
   const [awsAccessKeyId, setAwsAccessKeyId] = useState<string | null>(null);
   const awsRegion = "ca-central-1";
-  const [leaderboardTable, setLeaderboardTable] = useState<string | null>(null);
+  //const [leaderboardTable, setLeaderboardTable] = useState<string | null>(null);
 
   interface LeaderboardEntry {
     id: string;
