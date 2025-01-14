@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import HowToPlay from './HowToPlay';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Howl } from 'howler';
 
 function App() {
   const [word, setWord] = useState('');
@@ -43,55 +42,43 @@ function App() {
 
 
   const sounds = {
-    song1: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/song1.mp3'],
-      volume: 0.5,
-    }),
-    song2: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/song2.mp3'],
-      volume: 0.5,
-    }),
-    correct: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/correct.mp3'],
-      volume: 0.9,
-    }),
-    incorrect: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/incorrect.mp3'],
-      volume: 0.9,
-    }),
-    /*perfect: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
-      volume: 0.9,
-    }),
-    ding: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/ding.mp3'],
-      volume: 0.9,
-    }),
-    go: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/go.mp3'],
-      volume: 0.9,
-    }),
-    invalidword: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/invalidword.mp3'],
-      volume: 0.9,
-    }),
-    nice: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/nice.mp3'],
-      volume: 0.9,
-    }),
-    wordused: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/wordused.mp3'],
-      volume: 0.9,
-    }),
-    wow: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/wow.mp3'],
-      volume: 0.9,
-    }),
-    doublepoints: new Howl({
-      src: ['https://wordsoundeffects.s3.amazonaws.com/doublepoints.mp3'],
-      volume: 0.9,
-    }),*/
+    incorrect: new Audio('https://wordsoundeffects.s3.amazonaws.com/incorrect.mp3'),
+    correct: new Audio('https://wordsoundeffects.s3.amazonaws.com/correct.mp3'),
+    doublepoints: new Audio('/sounds/doublepoints.mp3'),
   };
+  /*perfect: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
+    volume: 0.9,
+  }),
+  ding: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/ding.mp3'],
+    volume: 0.9,
+  }),
+  go: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/go.mp3'],
+    volume: 0.9,
+  }),
+  invalidword: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/invalidword.mp3'],
+    volume: 0.9,
+  }),
+  nice: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/nice.mp3'],
+    volume: 0.9,
+  }),
+  wordused: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/wordused.mp3'],
+    volume: 0.9,
+  }),
+  wow: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/wow.mp3'],
+    volume: 0.9,
+  }),
+  doublepoints: new Howl({
+    src: ['https://wordsoundeffects.s3.amazonaws.com/doublepoints.mp3'],
+    volume: 0.9,
+  }),*/
+
 
 
   const generateWord = async () => {
@@ -177,7 +164,7 @@ function App() {
     await generateWord();
     setIsStarted(true);
     setTimeLeft(60); // Start the timer after the word is generated
-    //sounds.go.play();
+    //sounds.song1.play();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -388,10 +375,9 @@ function App() {
       {!isStarted ? (
         <div className="start-screen text-center">
           {/* Title */}
-          <h1 className="game-title text-6xl font-extrabold text-blue-900 drop-shadow-lg mb-8 animate-pulse">
-            Word Combo Breaker
+          <h1 className="game-title text-6xl font-extrabold text-blue-500 mb-8">
+            Iteratively
           </h1>
-
           {/* Buttons */}
           <div className="button-group space-x-4">
             <button
@@ -436,7 +422,7 @@ function App() {
               </h3>
               <div className="leaderboard-header grid grid-cols-3 text-lg font-semibold mb-2 border-b pb-2 text-gray-700">
                 <span>#</span>
-                <span className="text-center">Username</span>
+                <span className="text-center">Nickname</span>
                 <span className="text-right">Score</span>
               </div>
               <ul className="leaderboard-list space-y-3">
@@ -450,7 +436,7 @@ function App() {
                     <span className="text-center font-semibold text-gray-800">
                       {entry.username}
                     </span>
-                    <span className="text-right text-blue-600 font-bold">
+                    <span className="text-right text-blue-500 font-bold">
                       {entry.score}
                     </span>
                   </li>
@@ -463,12 +449,12 @@ function App() {
           {/* Submit Score Form */}
           {showSubmitForm && (
             <div className="submit-form mt-8">
-              <h3 className="text-xl font-bold mb-2">Submit Your Score:</h3>
+              <h3 className="text-xl font-bold mb-2">Submit Your Score to the Leaderboard:</h3>
               <input
                 type="text"
                 value={userTag}
                 onChange={(e) => setUserTag(e.target.value)}
-                placeholder="Enter your tag"
+                placeholder="Enter a nickname"
                 className="w-64 p-2 border border-gray-300 rounded-lg mb-4 text-lg" // Adjusted width and text size
               />
               <button
@@ -482,7 +468,12 @@ function App() {
         </div>
       ) : (
         /* Game Screen */
+
         <div className="game-screen max-w-5xl mx-auto p-8 bg-white rounded-lg shadow-lg mt-20">
+          <h1 className="game-title text-6xl font-extrabold text-blue-500  mb-8">
+            Iteratively
+          </h1>
+          <p className='mb-4'>Hit enter or the submit button to add a word to the list.</p>
           {/* Timer */}
           <div
             className={`timer text-2xl font-bold mb-4 ${timeLeft <= 10 ? 'text-red-500' : ''
@@ -501,7 +492,7 @@ function App() {
             ) : (
               <>
                 {curWord.slice(0, -1)}
-                <span className="font-extrabold text-blue-700 text-4xl">
+                <span className="font-extrabold text-blue-500 text-4xl">
                   {curWord.slice(-1)}
                 </span>
               </>
