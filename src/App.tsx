@@ -44,7 +44,7 @@ function App() {
   const sounds = {
     incorrect: new Audio('https://wordsoundeffects.s3.amazonaws.com/incorrect.mp3'),
     correct: new Audio('https://wordsoundeffects.s3.amazonaws.com/correct.mp3'),
-    doublepoints: new Audio('/sounds/doublepoints.mp3'),
+    doublepoints: new Audio('https://wordsoundeffects.s3.amazonaws.com/doublepoints.mp3'),
   };
   /*perfect: new Howl({
     src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
