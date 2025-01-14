@@ -178,7 +178,6 @@ function App() {
       try {
         const session = await fetchAuthSession();
         const token = session.tokens?.idToken?.toString();
-        console.log(token);
         const headers: HeadersInit = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
@@ -191,7 +190,6 @@ function App() {
 
         if (response.ok) {
           const responseText = await response.text();
-          console.log(responseText); // Log the response text for debugging
           if (responseText) {
             const data = JSON.parse(responseText);
             const leaderboardData = data.leaderboard.map((entry: { Name: string; Tag?: string; Score?: number }, index: number) => ({
@@ -217,8 +215,6 @@ function App() {
   };
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      console.log(userInput);
-      console.log(curWord);
       try {
         const session = await fetchAuthSession();
         const token = session.tokens?.idToken?.toString();
@@ -235,7 +231,6 @@ function App() {
         });
 
         const responseData = await response.json();
-        console.log(responseData); // Log the response data for debugging
 
         if (responseData.statusCode === 200) {
           if (userInput.startsWith(curWord[curWord.length - 1])) {
@@ -326,6 +321,11 @@ function App() {
     }
   };
 
+  const handleSubmitWord = async () => {
+    if (userInput.trim() === '') return; // Prevent submitting empty input
+    await handleKeyDown({ key: 'Enter' } as React.KeyboardEvent<HTMLInputElement>);
+  };
+
   const handleSubmitScore = async () => {
     try {
       const session = await fetchAuthSession();
@@ -394,7 +394,7 @@ function App() {
             </button>
             <button
               onClick={toggleInstructions}
-              className="bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700"
+              className="bg-orange-600 text-white py-2 px-4 rounded-lg shadow-md hover:bg-orange-700"
             >
               How to Play
             </button>
@@ -459,7 +459,7 @@ function App() {
               />
               <button
                 onClick={handleSubmitScore}
-                className="bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700"
+                className="bg-orange-400 text-white py-2 px-4 rounded-lg shadow-md hover:bg-orange-700"
               >
                 Submit
               </button>
@@ -528,15 +528,18 @@ function App() {
             onPaste={(e) => e.preventDefault()}
             onCut={(e) => e.preventDefault()}
           />
+          <button onClick={handleSubmitWord} className="submit-button bg-blue-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">
+            Submit
+          </button>
 
-          {/* Skip Button */}
+          {/* Skip Button for testing purposes 
           <button
             onClick={generateWord}
             disabled={isLoading}
             className="bg-yellow-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-yellow-700"
           >
             Skip Word
-          </button>
+          </button>*/}
 
           {/* Word List */}
           <div className="word-list mt-8">

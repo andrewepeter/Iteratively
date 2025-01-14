@@ -26,7 +26,7 @@ function HowToPlay() {
                 <ul className="list-disc list-inside text-gray-700 space-y-2">
                     <li><strong>+10 points</strong> for each valid word.</li>
                     <li><strong>-5 points</strong> for invalid words</li>
-                    <li><strong>-15 points</strong> for using a word perviously used.</li>
+                    <li><strong>-15 points</strong> for using a word previously used.</li>
                 </ul>
             </div>
 
