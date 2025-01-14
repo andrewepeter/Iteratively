@@ -190,7 +190,7 @@ function App() {
           console.log(responseText); // Log the response text for debugging
           if (responseText) {
             const data = JSON.parse(responseText);
-            const leaderboardData = data.leaderboard.map((entry: any, index: number) => ({
+            const leaderboardData = data.leaderboard.map((entry: { Name: string; Tag?: string; Score?: number }, index: number) => ({
               id: entry.Name, // Assuming 'Name' is unique and can be used as 'id'
               username: entry.Tag || "Anonymous", // Use 'Tag' if available, otherwise use 'Anonymous'
               score: entry.Score || 0, // Default to 0 if 'Score' is missing
@@ -363,33 +363,83 @@ function App() {
 
   return (
     <main className="container mx-auto p-4">
+      {/* Start Screen */}
       {!isStarted ? (
         <div className="start-screen text-center">
-          <button onClick={handleStart} className="start-button bg-blue-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">
-            Start Game
-          </button>
-          <button onClick={handleLeaderBoard} className="leader-button bg-gray-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 mt-4">
-            View Leaderboard
-          </button>
-          <button onClick={toggleInstructions} className="how-to-play-button bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700 mt-4">
-            How to Play
-          </button>
+          {/* Title */}
+          <h1 className="game-title text-6xl font-extrabold text-blue-900 drop-shadow-lg mb-8 animate-pulse">
+            Word Combo Breaker
+          </h1>
+
+          {/* Buttons */}
+          <div className="button-group space-x-4">
+            <button
+              onClick={handleStart}
+              className="bg-blue-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700"
+            >
+              Start Game
+            </button>
+            <button
+              onClick={handleLeaderBoard}
+              className="bg-gray-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-700"
+            >
+              View Leaderboard
+            </button>
+            <button
+              onClick={toggleInstructions}
+              className="bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700"
+            >
+              How to Play
+            </button>
+          </div>
+
+          {/* Instructions */}
           {showInstructions && (
             <div className="instructions mt-4 p-4 bg-gray-100 rounded-lg shadow-md">
               <HowToPlay />
             </div>
           )}
-          {score > 0 && <div className="final-score text-xl font-bold mt-4">Final Score: {score}</div>}
-          {showLeaderboard && (
-            <div className="leaderboard mt-8">
-              <h3 className="text-xl font-bold mb-2">Leaderboard:</h3>
-              <div className="leaderboard-list">
-                {leaderboard.map((entry) => (
-                  <div key={entry.id} className="text-lg">{entry.rank}. {entry.username}: {entry.score}</div>
-                ))}
-              </div>
+
+          {/* Final Score */}
+          {score > 0 && (
+            <div className="final-score text-xl font-bold mt-4">
+              Final Score: {score}
             </div>
           )}
+
+          {/* Leaderboard */}
+          {showLeaderboard && (
+            <div className="leaderboard mt-8 bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-2xl font-bold mb-4 text-center text-gray-800">
+                Top Players
+              </h3>
+              <div className="leaderboard-header grid grid-cols-3 text-lg font-semibold mb-2 border-b pb-2 text-gray-700">
+                <span>#</span>
+                <span className="text-center">Username</span>
+                <span className="text-right">Score</span>
+              </div>
+              <ul className="leaderboard-list space-y-3">
+                {leaderboard.map((entry, index) => (
+                  <li
+                    key={entry.id}
+                    className={`grid grid-cols-3 items-center p-2 rounded-lg ${index % 2 === 0 ? 'bg-gray-100' : ''
+                      }`}
+                  >
+                    <span className="font-medium">{index + 1}</span>
+                    <span className="text-center font-semibold text-gray-800">
+                      {entry.username}
+                    </span>
+                    <span className="text-right text-blue-600 font-bold">
+                      {entry.score}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+
+          {/* Submit Score Form */}
           {showSubmitForm && (
             <div className="submit-form mt-8">
               <h3 className="text-xl font-bold mb-2">Submit Your Score:</h3>
@@ -398,37 +448,63 @@ function App() {
                 value={userTag}
                 onChange={(e) => setUserTag(e.target.value)}
                 placeholder="Enter your tag"
-                className="tag-input w-full p-2 border border-gray-300 rounded-lg mb-4"
+                className="w-full p-2 border border-gray-300 rounded-lg mb-4"
               />
-              <button onClick={handleSubmitScore} className="submit-button bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700">
+              <button
+                onClick={handleSubmitScore}
+                className="bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700"
+              >
                 Submit
               </button>
             </div>
           )}
         </div>
       ) : (
-        <div className="max-w-5xl mx-auto p-8 bg-white rounded-lg shadow-lg mt-20">
-          <div className={`timer text-2xl font-bold mb-4 ${timeLeft <= 10 ? 'text-red-500' : ''}`}>
+        /* Game Screen */
+        <div className="game-screen max-w-5xl mx-auto p-8 bg-white rounded-lg shadow-lg mt-20">
+          {/* Timer */}
+          <div
+            className={`timer text-2xl font-bold mb-4 ${timeLeft <= 10 ? 'text-red-500' : ''
+              }`}
+          >
             Time Left: {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
           </div>
+
+          {/* Score */}
           <div className="score text-xl font-bold mb-4">Score: {score}</div>
+
+          {/* Current Word */}
           <div className="word-display text-3xl font-bold mb-4">
-            {isLoading ? 'Generating word...' : (
+            {isLoading ? (
+              'Generating word...'
+            ) : (
               <>
                 {curWord.slice(0, -1)}
-                <span className="font-extrabold text-blue-700 text-4xl">{curWord.slice(-1)}</span>
+                <span className="font-extrabold text-blue-700 text-4xl">
+                  {curWord.slice(-1)}
+                </span>
               </>
             )}
           </div>
+
+          {/* Error Message */}
           {error && <div className="error text-red-500 mb-4">{error}</div>}
-          {comboMessage && <div className="combo-message text-green-500 mb-4">{comboMessage}</div>}
+
+          {/* Combo Message */}
+          {comboMessage && (
+            <div className="combo-message text-green-500 mb-4">
+              {comboMessage}
+            </div>
+          )}
+
+          {/* Input Field */}
           <input
             ref={inputRef}
             value={userInput}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Type the word"
-            className="word-input w-full p-2 border border-gray-300 rounded-lg mb-4"
+            className="w-full p-2 border border-gray-300 rounded-lg mb-4"
             disabled={!isStarted || isLoading}
             autoFocus
             onBlur={(e) => {
@@ -440,14 +516,24 @@ function App() {
             onPaste={(e) => e.preventDefault()}
             onCut={(e) => e.preventDefault()}
           />
-          <button onClick={generateWord} disabled={isLoading} className="generate-button bg-yellow-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-yellow-700">
+
+          {/* Skip Button */}
+          <button
+            onClick={generateWord}
+            disabled={isLoading}
+            className="bg-yellow-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-yellow-700"
+          >
             Skip Word
           </button>
+
+          {/* Word List */}
           <div className="word-list mt-8">
             <h3 className="text-xl font-bold mb-2">Word List:</h3>
             <ul className="list-disc list-inside">
               {wordList.map((w) => (
-                <li key={w} className="text-lg">{w}</li>
+                <li key={w} className="text-lg">
+                  {w}
+                </li>
               ))}
             </ul>
           </div>
@@ -455,6 +541,8 @@ function App() {
       )}
     </main>
   );
+
+
 }
 
 export default App;
