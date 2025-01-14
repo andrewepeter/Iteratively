@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import HowToPlay from './HowToPlay';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { Howl } from 'howler';
 
 function App() {
   const [word, setWord] = useState('');
@@ -41,8 +42,24 @@ function App() {
   const genWordUrl = 'https://dns37gpcu9.execute-api.ca-central-1.amazonaws.com/prod/genWord'
 
 
-  /*const sounds = {
-    perfect: new Howl({
+  const sounds = {
+    song1: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/song1.mp3'],
+      volume: 0.5,
+    }),
+    song2: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/song2.mp3'],
+      volume: 0.5,
+    }),
+    correct: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/correct.mp3'],
+      volume: 0.9,
+    }),
+    incorrect: new Howl({
+      src: ['https://wordsoundeffects.s3.amazonaws.com/incorrect.mp3'],
+      volume: 0.9,
+    }),
+    /*perfect: new Howl({
       src: ['https://wordsoundeffects.s3.amazonaws.com/perfect.mp3'],
       volume: 0.9,
     }),
@@ -73,8 +90,8 @@ function App() {
     doublepoints: new Howl({
       src: ['https://wordsoundeffects.s3.amazonaws.com/doublepoints.mp3'],
       volume: 0.9,
-    }),
-  };*/
+    }),*/
+  };
 
 
   const generateWord = async () => {
@@ -236,11 +253,12 @@ function App() {
         if (responseData.statusCode === 200) {
           if (userInput.startsWith(curWord[curWord.length - 1])) {
             if (wordList.includes(userInput)) {
-              //sounds.wordused.play();
+              sounds.incorrect.play();
               setScore((prev) => prev - 15);
               setError("Word already used. Try a different word!");
               resetCombo();
             } else {
+              sounds.correct.play();
               const currentTime = Date.now();
               const timeDiff = lastWordTime ? (currentTime - lastWordTime) / 1000 : 0;
 
@@ -294,16 +312,19 @@ function App() {
               setUserInput(''); // Clear the text field
             }
           } else {
-            //sounds.invalidword.play();
+            sounds.incorrect.play();
             setError("Incorrect word. Try again!");
             setScore((prev) => prev - 5);
             resetCombo();
+            setComboMessage('')
             setUserInput(''); // Clear the text field
           }
         } else if (responseData.statusCode === 404) {
           console.error('Error response text:', responseData.body); // Log the error response text
-          setError("Word not found. Try again!");
+          setError("This is not a valid word. Try again!");
           setScore((prev) => prev - 5);
+          resetCombo();
+          setComboMessage('')
           setUserInput(''); // Clear the text field
         } else {
           console.error('Error response text:', responseData.body); // Log the error response text
@@ -448,7 +469,7 @@ function App() {
                 value={userTag}
                 onChange={(e) => setUserTag(e.target.value)}
                 placeholder="Enter your tag"
-                className="w-full p-2 border border-gray-300 rounded-lg mb-4"
+                className="w-64 p-2 border border-gray-300 rounded-lg mb-4 text-lg" // Adjusted width and text size
               />
               <button
                 onClick={handleSubmitScore}
