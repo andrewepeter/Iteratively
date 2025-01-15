@@ -459,7 +459,7 @@ function App() {
               />
               <button
                 onClick={handleSubmitScore}
-                className="bg-orange-400 text-white py-2 px-4 rounded-lg shadow-md hover:bg-orange-700"
+                className="bg-blue-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700"
               >
                 Submit
               </button>
