@@ -1,25 +1,19 @@
-## AWS Amplify React+Vite Starter Template
+# How to Play
+## Start with the First Word
+The game begins with a random word. Your goal is to build a chain of words by following the rules!
 
-This repository provides a starter template for creating applications using React+Vite and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.
+## Follow the Chain
+Type a word that starts with the last letter of the previous word. Example: If the word is **"Banana"**, the next word must start with **"A"**, like **"Apple"**.
 
-## Overview
+## Act Fast!
+You have a limited amount of time to type the next word. Be quick to keep the chain alive!
 
-This template equips you with a foundational React application integrated with AWS Amplify, streamlined for scalability and performance. It is ideal for developers looking to jumpstart their project with pre-configured AWS services like Cognito, AppSync, and DynamoDB.
+##Score Points
+**+10 points** for each valid word.
+**-5 points** for invalid words
+**-15 points** for using a word previously used.
 
-## Features
-
-- **Authentication**: Setup with Amazon Cognito for secure user authentication.
-- **API**: Ready-to-use GraphQL endpoint with AWS AppSync.
-- **Database**: Real-time database powered by Amazon DynamoDB.
-
-## Deploying to AWS
-
-For detailed instructions on deploying your application, refer to the [deployment section](https://docs.amplify.aws/react/start/quickstart/#deploy-a-fullstack-app-to-aws) of our documentation.
-
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
+## Combos and Bonuses
+Earn extra points by using rare letters like **Q**, **Z**, and **X**. Build combos by entering multiple correct words quickly. The longer the word, the more points you score!
+## The Goal
+Keep the word chain alive by typing words that follow the rules. Test your speed, vocabulary, and focus!
